@@ -1067,3 +1067,9 @@ git add .
 git commit -m "Initial commit: Truth Lens for the forgotten people"
 git remote add origin https://github.com/[your-username]/truth-lens
 git push -u origin main
+# Deploy to free tier hosting
+# Options: Heroku, Railway, PythonAnywhere, Replit
+git push heroku main
+# Now accessible at: https://truth-lens.herokuapp.com
+// Truth Lens extension that analyzes any webpage
+// Right-click -> "Analyze with Truth Lens"
