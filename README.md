@@ -1,6 +1,6 @@
 # Truth-Lens
 Lens of truth
-git clone https://github.com/your-username/truth-lens.git
+git clone https://github.com/LHMisme420/Truth-Lens/blob/main/README.md
 cd truth-lens
 pip install -r requirements.txt
 from truth_lens.analyzer import analyze
