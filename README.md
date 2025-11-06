@@ -1073,3 +1073,66 @@ git push heroku main
 # Now accessible at: https://truth-lens.herokuapp.com
 // Truth Lens extension that analyzes any webpage
 // Right-click -> "Analyze with Truth Lens"
+# examples/cognitive_bias_analysis.py
+
+"""
+Truth Lens - Cognitive Bias Analysis Example
+
+This example demonstrates analyzing the psychological concept of Confirmation Bias
+to reveal its power dynamics, silences, and societal context.
+"""
+sample_concept_text = """
+Confirmation Bias is the tendency to search for, interpret, favor, and recall
+information in a way that confirms or supports one's prior beliefs or values.
+This leads to overconfidence in personal beliefs and can result in polarized
+social groups that rarely engage with disconfirming evidence.
+"""
+
+# Initialize analyzers
+from src.analyzer.power_analyzer import PowerAnalyzer
+from src.analyzer.silence_detector import SilenceDetector
+from src.analyzer.context_mapper import ContextMapper
+
+power_analyzer = PowerAnalyzer()
+silence_detector = SilenceDetector()
+context_mapper = ContextMapper()
+
+print("=== 🧠 TRUTH LENS ON COGNITIVE BIAS ===")
+
+print("\n--- ⚖️ POWER ANALYSIS ---")
+power_result = power_analyzer.analyze_beneficiaries(sample_concept_text)
+print("Thought: Who benefits from *unquestioned* beliefs?")
+print("Identified Power Assumptions:", [a['description'] for a in power_result['power_assumptions']][:2])
+
+print("\n--- 🔇 SILENCE ANALYSIS ---")
+silence_result = silence_detector.detect_silences(sample_concept_text)
+print("Thought: What is ignored when Confirmation Bias dominates?")
+print("Missing Perspectives:", [p['perspective'] for p in silence_result['missing_perspectives']][:2])
+
+print("\n--- 🌍 CONTEXT ANALYSIS ---")
+context_result = context_mapper.map_context(sample_concept_text)
+print("Thought: What social context amplifies this bias?")
+print("Context Questions:", context_result['contextual_questions'][-2:])
+# Truth Lens - See Through the Noise
+
+A tool for the forgotten people. Truth Lens reveals the hidden frameworks in any text through three core analyses.
+
+## 🎯 The Three Lenses
+
+1. **Power Analysis** - Who benefits? What power assumptions are baked in?
+2. **Silence Analysis** - Who/what is missing? What perspectives are excluded?  
+3. **Context Analysis** - What conditions made this possible?
+
+---
+
+## 🧠 Applying the Lens to Abstract Concepts
+
+Truth Lens is not limited to policies and speeches. It can be applied to **abstract or philosophical text** (e.g., psychological theories, ethical frameworks, artistic manifestos) by reinterpreting the lenses:
+
+* **Power:** Focus on the dominance of **one idea** or the **conceptual beneficiaries** of a flawed theory.
+* **Silence:** Look for **alternative theories** or human experiences that the concept fails to account for.
+* **Context:** Map the **historical era** or societal crisis that made the abstract concept necessary or popular.
+
+Run the new example:
+```bash
+python examples/cognitive_bias_analysis.py
