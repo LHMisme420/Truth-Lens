@@ -1136,3 +1136,790 @@ Truth Lens is not limited to policies and speeches. It can be applied to **abstr
 Run the new example:
 ```bash
 python examples/cognitive_bias_analysis.py
+"""
+Truth Lens Analyzer Module
+Core analysis engines for power, silence, and context detection
+"""
+
+from .power_analyzer import PowerAnalyzer
+from .silence_detector import SilenceDetector
+from .context_mapper import ContextMapper
+
+__all__ = ['PowerAnalyzer', 'SilenceDetector', 'ContextMapper']
+
+def analyze_text(text: str) -> dict:
+    """
+    Convenience function to run all three analyses on text
+    """
+    power = PowerAnalyzer()
+    silence = SilenceDetector()
+    context = ContextMapper()
+    
+    return {
+        'power': power.analyze_beneficiaries(text),
+        'silence': silence.detect_silences(text),
+        'context': context.map_context(text)
+    }"""
+Truth Lens Core Module
+Configuration and security utilities
+"""
+
+from .config import Config
+from .security import Security
+
+__all__ = ['Config', 'Security']
+"""
+Truth Lens Interface Module
+Web and API interfaces for text analysis
+"""
+
+from .web_interface import app
+from .api import api
+
+__all__ = ['app', 'api
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download NLTK data
+RUN python -m nltk.downloader punkt stopwords
+
+# Copy application code
+COPY . .
+
+# Create non-root user for security
+RUN useradd -m -u 1000 truthlens && chown -R truthlens:truthlens /app
+USER truthlens
+
+# Expose port
+EXPOSE 5000
+
+# Set environment variables
+ENV FLASK_APP=src.interface.web_interface:app
+ENV PYTHONUNBUFFERED=1
+
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "src.interface.web_interface:app"]
+version: '3.8'
+
+services:
+  truth-lens:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - SECRET_KEY=truth-lens-dev-key
+    volumes:
+      - ./src:/app/src
+    command: python -m flask run --host=0.0.0.0
+from setuptools import setup, find_packages
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+setup(
+    name="truth-lens",
+    version="1.0.0",
+    author="LHMisme420",
+    description="A tool for the forgotten people - reveals hidden frameworks in text",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/LHMisme420/Truth-Lens",
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Education",
+        "Topic :: Text Processing :: Linguistic",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+    ],
+    python_requires=">=3.7",
+    install_requires=[
+        "flask>=2.3.3",
+        "nltk>=3.8.1",
+        "textblob>=0.17.1",
+        "newspaper3k>=0.2.8",
+        "requests>=2.31.0",
+        "gunicorn>=21.2.0",
+        "python-dotenv>=1.0.0",
+    ],
+    entry_points={
+        "console_scripts": [
+            "truth-lens=interface.web_interface:main",
+        ],
+    },
+)
+.PHONY: help install run test clean docker-build docker-run deploy-heroku
+
+help:
+	@echo "Truth Lens - Make Commands"
+	@echo "=========================="
+	@echo "install       - Install dependencies"
+	@echo "run          - Run local development server"
+	@echo "test         - Run test suite"
+	@echo "clean        - Clean cache files"
+	@echo "docker-build - Build Docker image"
+	@echo "docker-run   - Run in Docker"
+	@echo "deploy-heroku - Deploy to Heroku"
+
+install:
+	pip install -r requirements.txt
+	python -m nltk.downloader punkt stopwords
+
+run:
+	python src/interface/web_interface.py
+
+test:
+	python -m pytest tests/ -v
+
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name "*.egg-info" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+
+docker-build:
+	docker build -t truth-lens .
+
+docker-run:
+	docker-compose up
+
+deploy-heroku:
+	heroku create truth-lens-app
+	git push heroku main
+	heroku open
+#!/usr/bin/env python3
+"""
+Truth Lens CLI - Command Line Interface for text analysis
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.analyzer.power_analyzer import PowerAnalyzer
+from src.analyzer.silence_detector import SilenceDetector
+from src.analyzer.context_mapper import ContextMapper
+from src.core.security import Security
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Truth Lens - See through the noise. For the forgotten people.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  truth-lens --text "Your text here"
+  truth-lens --file document.txt
+  truth-lens --file document.txt --lens power
+  truth-lens --file document.txt --json output.json
+        """
+    )
+    
+    # Input options
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('--text', help='Text to analyze')
+    input_group.add_argument('--file', help='File to analyze')
+    
+    # Analysis options
+    parser.add_argument('--lens', choices=['all', 'power', 'silence', 'context'], 
+                       default='all', help='Which lens to apply (default: all)')
+    
+    # Output options
+    parser.add_argument('--json', metavar='FILE', help='Save results to JSON file')
+    parser.add_argument('--verbose', action='store_true', help='Verbose output')
+    parser.add_argument('--questions-only', action='store_true', 
+                       help='Only show critical questions')
+    
+    args = parser.parse_args()
+    
+    # Get text to analyze
+    if args.text:
+        text = args.text
+    else:
+        try:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                text = f.read()
+        except FileNotFoundError:
+            print(f"Error: File '{args.file}' not found")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            sys.exit(1)
+    
+    # Sanitize input
+    text = Security.sanitize_input(text)
+    
+    if len(text) < 10:
+        print("Error: Text too short for meaningful analysis")
+        sys.exit(1)
+    
+    # Initialize analyzers
+    results = {}
+    
+    if args.lens in ['all', 'power']:
+        power_analyzer = PowerAnalyzer()
+        results['power'] = power_analyzer.analyze_beneficiaries(text)
+    
+    if args.lens in ['all', 'silence']:
+        silence_detector = SilenceDetector()
+        results['silence'] = silence_detector.detect_silences(text)
+    
+    if args.lens in ['all', 'context']:
+        context_mapper = ContextMapper()
+        results['context'] = context_mapper.map_context(text)
+    
+    # Output results
+    if args.json:
+        with open(args.json, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"Results saved to {args.json}")
+    
+    # Console output
+    print("\n" + "="*60)
+    print("🔍 TRUTH LENS ANALYSIS")
+    print("="*60)
+    
+    if args.questions_only:
+        print_questions(results)
+    else:
+        print_full_results(results, args.verbose)
+
+def print_questions(results):
+    """Print only the critical questions from each analysis"""
+    print("\n❓ CRITICAL QUESTIONS TO ASK:\n")
+    
+    if 'power' in results:
+        print("⚖️  Power Questions:")
+        for q in results['power']['recommended_questions'][:3]:
+            print(f"   • {q}")
+    
+    if 'silence' in results:
+        print("\n🔇 Silence Questions:")
+        for q in results['silence']['questions_to_uncover_silence'][:3]:
+            print(f"   • {q}")
+    
+    if 'context' in results:
+        print("\n🌍 Context Questions:")
+        for q in results['context']['contextual_questions'][:3]:
+            print(f"   • {q}")
+
+def print_full_results(results, verbose=False):
+    """Print full analysis results"""
+    
+    if 'power' in results:
+        print("\n⚖️  POWER ANALYSIS")
+        print("-" * 40)
+        power = results['power']
+        
+        if power['direct_beneficiaries']:
+            print(f"Direct Beneficiaries: {len(power['direct_beneficiaries'])} identified")
+            if verbose:
+                for b in power['direct_beneficiaries'][:3]:
+                    print(f"  • {b.get('entity', 'Unknown')}: {b.get('evidence', '')}")
+        
+        if power['power_assumptions']:
+            print(f"Power Assumptions: {len(power['power_assumptions'])} found")
+            if verbose:
+                for a in power['power_assumptions'][:3]:
+                    print(f"  • {a.get('description', '')}")
+        
+        print("\nQuestions to Ask:")
+        for q in power['recommended_questions'][:3]:
+            print(f"  • {q}")
+    
+    if 'silence' in results:
+        print("\n🔇 SILENCE ANALYSIS")
+        print("-" * 40)
+        silence = results['silence']
+        
+        print(f"Missing Perspectives: {len(silence['missing_perspectives'])} identified")
+        if verbose:
+            for p in silence['missing_perspectives'][:3]:
+                print(f"  • {p.get('perspective', '')}: {p.get('significance', '')}")
+        
+        print(f"Unmentioned Rights: {len(silence['unmentioned_rights'])} found")
+        if verbose:
+            for r in silence['unmentioned_rights'][:3]:
+                print(f"  • {r.get('right', '')}")
+        
+        print("\nQuestions to Uncover:")
+        for q in silence['questions_to_uncover_silence'][:3]:
+            print(f"  • {q}")
+    
+    if 'context' in results:
+        print("\n🌍 CONTEXT ANALYSIS")
+        print("-" * 40)
+        context = results['context']
+        
+        if context['temporal_context']['explicit_dates']:
+            print(f"Dates Referenced: {len(context['temporal_context']['explicit_dates'])}")
+        
+        if context['authority_references']:
+            print(f"Authority References: {len(context['authority_references'])}")
+            if verbose:
+                for ref in context['authority_references'][:3]:
+                    print(f"  • {ref.get('reference', '')}")
+        
+        if context['assumed_knowledge']:
+            print(f"Assumed Knowledge: {len(context['assumed_knowledge'])} items")
+            if verbose:
+                for item in context['assumed_knowledge'][:3]:
+                    print(f"  • {item}")
+        
+        print("\nContext Questions:")
+        for q in context['contextual_questions'][:3]:
+            print(f"  • {q}")
+    
+    print("\n" + "="*60)
+    print("Privacy Note: No data stored or tracked")
+    print("="*60)
+
+if __name__ == "__main__":
+    main()
+{
+  "manifest_version": 3,
+  "name": "Truth Lens",
+  "version": "1.0.0",
+  "description": "See through the noise - Analyze any text for power dynamics, silences, and context",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:5000/*",
+    "https://truth-lens.herokuapp.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}// Truth Lens Browser Extension - Popup Script
+
+document.addEventListener('DOMContentLoaded', () => {
+  const textInput = document.getElementById('textInput');
+  const analyzeButton = document.getElementById('analyzeButton');
+  const analyzeSelection = document.getElementById('analyzeSelection');
+  const analyzePage = document.getElementById('analyzePage');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+
+  // Analyze button click
+  analyzeButton.addEventListener('click', () => {
+    const text = textInput.value.trim();
+    if (text.length < 10) {
+      alert('Please enter at least 10 characters to analyze');
+      return;
+    }
+    analyzeText(text);
+  });
+
+  // Analyze selection button
+  analyzeSelection.addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    chrome.tabs.sendMessage(tab.id, { action: "getSelection" }, (response) => {
+      if (response && response.text) {
+        textInput.value = response.text;
+        analyzeText(response.text);
+      } else {
+        alert('Please select some text on the page first');
+      }
+    });
+  });
+
+  // Analyze full page button
+  analyzePage.addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    chrome.tabs.sendMessage(tab.id, { action: "getPageText" }, (response) => {
+      if (response && response.text) {
+        const truncated = response.text.substring(0, 5000); // Limit to 5000 chars
+        textInput.value = truncated;
+        analyzeText(truncated);
+      }
+    });
+  });
+
+  function analyzeText(text) {
+    loading.style.display = 'block';
+    results.style.display = 'none';
+    analyzeButton.disabled = true;
+
+    chrome.runtime.sendMessage(
+      { action: "analyze", text: text },
+      (response) => {
+        loading.style.display = 'none';
+        analyzeButton.disabled = false;
+
+        if (response.success) {
+          displayResults(response.data);
+        } else {
+          alert('Analysis failed. Make sure Truth Lens server is running.');
+        }
+      }
+    );
+  }
+
+  function displayResults(data) {
+    results.style.display = 'block';
+
+    // Power Analysis
+    const powerDiv = document.getElementById('powerAnalysis');
+    powerDiv.innerHTML = `
+      <h3>⚖️ Power Analysis</h3>
+      <p><strong>Beneficiaries:</strong> ${data.analysis.power.direct_beneficiaries.length} identified</p>
+      <p><strong>Power Assumptions:</strong> ${data.analysis.power.power_assumptions.length} found</p>
+      <p><strong>Key Question:</strong> ${data.analysis.power.recommended_questions[0] || 'N/A'}</p>
+    `;
+
+    // Silence Analysis
+    const silenceDiv = document.getElementById('silenceAnalysis');
+    silenceDiv.innerHTML = `
+      <h3>🔇 Silence Analysis</h3>
+      <p><strong>Missing Perspectives:</strong> ${data.analysis.silence.missing_perspectives.length}</p>
+      <p><strong>Unmentioned Rights:</strong> ${data.analysis.silence.unmentioned_rights.length}</p>
+      <p><strong>Key Question:</strong> ${data.analysis.silence.questions_to_uncover_silence[0] || 'N/A'}</p>
+    `;
+
+    // Context Analysis
+    const contextDiv = document.getElementById('contextAnalysis');
+    contextDiv.innerHTML = `
+      <h3>🌍 Context Analysis</h3>
+      <p><strong>Temporal Context:</strong> ${data.analysis.context.temporal_context.explicit_dates.length} dates</p>
+      <p><strong>Authority Refs:</strong> ${data.analysis.context.authority_references.length}</p>
+      <p><strong>Key Question:</strong> ${data.analysis.context.contextual_questions[0] || 'N/A'}</p>
+    `;
+  }
+});// Truth Lens Browser Extension - Content Script
+
+// Listen for messages from popup or background
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getSelection") {
+    const selectedText = window.getSelection().toString();
+    sendResponse({ text: selectedText });
+  } else if (request.action === "getPageText") {
+    const pageText = document.body.innerText;
+    sendResponse({ text: pageText });
+  } else if (request.action === "showResults") {
+    showAnalysisOverlay(request.results);
+  }
+  return true;
+});
+
+// Create and show analysis overlay on the page
+function showAnalysisOverlay(results) {
+  // Remove existing overlay if present
+  const existing = document.getElementById('truth-lens-overlay');
+  if (existing) {
+    existing.remove();
+  }
+
+  // Create overlay element
+  const overlay = document.createElement('div');
+  overlay.id = 'truth-lens-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 350px;
+    max-height: 500px;
+    background: white;
+    border: 2px solid #2c3e50;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 999999;
+    font-family: Arial, sans-serif;
+    overflow-y: auto;
+  `;
+
+  // Create content
+  overlay.innerHTML = `
+    <div style="background: #2c3e50; color: white; padding: 12px; position: sticky; top: 0;">
+      <h3 style="margin: 0; font-size: 16px;">🔍 Truth Lens Analysis</h3>
+      <button id="close-truth-lens" style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: white; font-size: 20px; cursor: pointer;">×</button>
+    </div>
+    <div style="padding: 15px;">
+      <div style="margin-bottom: 15px; padding: 10px; background: #fee; border-left: 4px solid #e74c3c;">
+        <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #c0392b;">⚖️ Power Analysis</h4>
+        <p style="margin: 3px 0; font-size: 12px;">Beneficiaries: ${results.analysis.power.direct_beneficiaries.length} identified</p>
+        <p style="margin: 3px 0; font-size: 12px;">Power assumptions: ${results.analysis.power.power_assumptions.length} found</p>
+        <p style="margin: 3px 0; font-size: 11px; font-style: italic; color: #666;">
+          Ask: ${results.analysis.power.recommended_questions[0] || 'Who benefits from this framing?'}
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #f39c12;">
+        <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #e67e22;">🔇 Silence Analysis</h4>
+        <p style="margin: 3px 0; font-size: 12px;">Missing perspectives: ${results.analysis.silence.missing_perspectives.length}</p>
+        <p style="margin: 3px 0; font-size: 12px;">Unmentioned rights: ${results.analysis.silence.unmentioned_rights.length}</p>
+        <p style="margin: 3px 0; font-size: 11px; font-style: italic; color: #666;">
+          Ask: ${results.analysis.silence.questions_to_uncover_silence[0] || 'Whose voice is missing?'}
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 10px; padding: 10px; background: #d4edda; border-left: 4px solid #27ae60;">
+        <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #27ae60;">🌍 Context Analysis</h4>
+        <p style="margin: 3px 0; font-size: 12px;">Temporal elements: ${results.analysis.context.temporal_context.explicit_dates.length} dates</p>
+        <p style="margin: 3px 0; font-size: 12px;">Authority references: ${results.analysis.context.authority_references.length}</p>
+        <p style="margin: 3px 0; font-size: 11px; font-style: italic; color: #666;">
+          Ask: ${results.analysis.context.contextual_questions[0] || 'What conditions created this?'}
+        </p>
+      </div>
+      
+      <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+        <p style="margin: 0; font-size: 10px; color: #666; text-align: center;">
+          For the forgotten people • Zero tracking • No data stored
+        </p>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Add close button functionality
+  document.getElementById('close-truth-lens').addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  // Auto-close after 30 seconds
+  setTimeout(() => {
+    if (document.getElementById('truth-lens-overlay')) {
+      overlay.remove();
+    }
+  }, 30000);
+}#!/bin/bash
+
+# Truth Lens Deployment Script
+# For the forgotten people
+
+set -e
+
+echo "🔍 TRUTH LENS DEPLOYMENT"
+echo "========================"
+echo "For the forgotten people"
+echo ""
+
+# Check Python version
+python_version=$(python3 --version 2>&1 | grep -Po '(?<=Python )\d+\.\d+')
+required_version="3.7"
+
+if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
+    echo "❌ Python 3.7+ required. Current version: $python_version"
+    exit 1
+fi
+
+echo "✅ Python version OK: $python_version"
+
+# Create virtual environment
+echo "📦 Creating virtual environment..."
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+echo "📚 Installing dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Download NLTK data
+echo "📥 Downloading language data..."
+python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
+
+# Run tests
+echo "🧪 Running tests..."
+python -m pytest tests/ -v || echo "⚠️  Some tests failed, but continuing..."
+
+# Setup environment file
+if [ ! -f .env ]; then
+    echo "🔧 Creating .env file..."
+    cat > .env << EOF
+SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')
+FLASK_ENV=production
+FLASK_APP=src.interface.web_interface:app
+EOF
+    echo "✅ .env file created"
+fi
+
+# Deployment options
+echo ""
+echo "🚀 DEPLOYMENT OPTIONS:"
+echo "====================="
+echo ""
+echo "1. LOCAL DEVELOPMENT:"
+echo "   make run"
+echo "   # or"
+echo "   python src/interface/web_interface.py"
+echo ""
+echo "2. DOCKER:"
+echo "   docker-compose up"
+echo ""
+echo "3. HEROKU:"
+echo "   heroku create truth-lens-[your-name]"
+echo "   git push heroku main"
+echo ""
+echo "4. COMMAND LINE:"
+echo "   python truth-lens-cli.py --file document.txt"
+echo ""
+echo "5. BROWSER EXTENSION:"
+echo "   1. Open Chrome/Brave"
+echo "   2. Go to chrome://extensions"
+echo "   3. Enable Developer Mode"
+echo "   4. Load unpacked -> Select browser-extension folder"
+echo ""
+echo "========================"
+echo "✊ Power to the people"
+echo "🔍 See through the noise"
+echo "========================"
+bash
+
+chmod +x /home/claude/truth-lens/deploy.sh /home/claude/truth-lens/truth-lens-cli.py
+Output
+
+exit code 0
+#!/bin/bash
+
+# Truth Lens - Git Repository Setup
+# Ready to deploy to GitHub
+
+echo "🔍 TRUTH LENS - GitHub Setup"
+echo "============================"
+echo ""
+
+# Check if git is initialized
+if [ ! -d .git ]; then
+    echo "Initializing git repository..."
+    git init
+    echo "✅ Git initialized"
+fi
+
+# Add all files
+echo "Adding files to git..."
+git add .
+
+# Create initial commit
+echo "Creating initial commit..."
+git commit -m "🔍 Truth Lens - For the forgotten people
+
+A tool that reveals hidden power structures, silences, and context in any text.
+
+Features:
+- ⚖️ Power Analysis: Identifies who benefits and what assumptions are made
+- 🔇 Silence Analysis: Reveals missing perspectives and unmentioned rights  
+- 🌍 Context Analysis: Maps temporal, conditional, and authority frameworks
+- 🔐 Zero tracking, no data collection, privacy by design
+- 🌐 Web interface, API, CLI tool, and browser extension
+- 📖 Comprehensive documentation and examples
+
+For tenants reading landlord notices.
+For workers decoding corporate policies.
+For citizens analyzing political speeches.
+For anyone the system tries to confuse.
+
+See through the noise."
+
+echo "✅ Repository ready!"
+echo ""
+echo "NEXT STEPS:"
+echo "==========="
+echo ""
+echo "1. Add your GitHub remote:"
+echo "   git remote add origin https://github.com/LHMisme420/Truth-Lens.git"
+echo ""
+echo "2. Push to GitHub:"
+echo "   git push -u origin main"
+echo ""
+echo "3. Optional: Create additional branches"
+echo "   git checkout -b develop"
+echo "   git push -u origin develop"
+echo ""
+echo "4. Set up GitHub Secrets for CI/CD (optional):"
+echo "   - DOCKER_USERNAME"
+echo "   - DOCKER_PASSWORD"
+echo "   - HEROKU_API_KEY"
+echo ""
+echo "5. Deploy to production:"
+echo "   - Heroku: heroku create truth-lens-app && git push heroku main"
+echo "   - Docker: docker build -t truth-lens . && docker run -p 5000:5000 truth-lens"
+echo "   - Direct: python src/interface/web_interface.py"
+echo ""
+echo "========================"
+echo "✊ Power to the people"
+echo "🔍 See through the noise"
+echo "========================"
+truth-lens/
+├── src/
+│   ├── analyzer/          # Core analysis engines
+│   │   ├── __init__.py
+│   │   ├── power_analyzer.py
+│   │   ├── silence_detector.py
+│   │   └── context_mapper.py
+│   ├── interface/         # Web & API interfaces
+│   │   ├── __init__.py
+│   │   ├── web_interface.py
+│   │   └── api.py
+│   └── core/             # Configuration & security
+│       ├── __init__.py
+│       ├── config.py
+│       └── security.py
+├── browser-extension/     # Chrome/Brave extension
+│   ├── manifest.json
+│   ├── background.js
+│   ├── content.js
+│   ├── popup.html
+│   └── popup.js
+├── tests/                # Test suite
+├── docs/                 # Documentation
+├── examples/             # Example analyses
+├── .github/workflows/    # CI/CD pipeline
+│   └── ci-cd.yml
+├── Dockerfile           # Container deployment
+├── docker-compose.yml   # Local Docker setup
+├── Procfile            # Heroku deployment
+├── Makefile            # Build commands
+├── requirements.txt    # Python dependencies
+├── setup.py           # Package configuration
+├── deploy.sh          # Deployment script
+├── git-setup.sh       # Git initi
