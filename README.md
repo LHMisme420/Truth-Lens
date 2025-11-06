@@ -1923,3 +1923,23 @@ truth-lens/
 ├── setup.py           # Package configuration
 ├── deploy.sh          # Deployment script
 ├── git-setup.sh       # Git initi
+truth-lens/
+├── src/
+│   ├── analyzer/          # Power, Silence, Context engines
+│   ├── core/              # Config & Security modules
+│   └── interface/         # Web + API interfaces
+├── browser-extension/     # Chrome/Brave extension
+├── tests/                 # Unit tests
+├── docs/                  # Documentation & API specs
+├── examples/              # Demo scripts & notebooks
+├── Dockerfile
+├── docker-compose.yml
+├── Procfile
+├── Makefile
+├── requirements.txt
+├── setup.py
+├── LICENSE
+├── README.md
+├── truth-lens-cli.py
+├── deploy.sh
+└── git-setup.sh
